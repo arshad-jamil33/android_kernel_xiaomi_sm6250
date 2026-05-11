@@ -37,7 +37,7 @@ then
 echo  " Failed To Compile Kernel"
 else
 echo -e " Kernel Compile Successful"
-git clone --depth=1 https://github.com/Amritorock/AnyKernel3 -b r5x AnyKernel
+git clone --depth=1 https://github.com/arshad-jamil33/Anykernel-3.git AnyKernel
 cp out/arch/arm64/boot/Image.gz AnyKernel
 cd AnyKernel
 zip -r9 BlackHole-miatoll-${TANGGAL}.zip *
