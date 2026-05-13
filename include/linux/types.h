@@ -37,6 +37,7 @@ typedef __kernel_gid32_t	gid_t;
 typedef __kernel_uid16_t        uid16_t;
 typedef __kernel_gid16_t        gid16_t;
 
+typedef unsigned int __bitwise __poll_t;
 typedef unsigned long		uintptr_t;
 
 #ifdef CONFIG_HAVE_UID16
