@@ -173,7 +173,7 @@ static inline void hlist_del_init_rcu(struct hlist_node *n)
 {
 	if (!hlist_unhashed(n)) {
 		__hlist_del(n);
-		WRITE_ONCE(n->pprev, NULL);
+		n->pprev = NULL;
 	}
 }
 
@@ -445,7 +445,7 @@ static inline void list_splice_tail_init_rcu(struct list_head *list,
 static inline void hlist_del_rcu(struct hlist_node *n)
 {
 	__hlist_del(n);
-	WRITE_ONCE(n->pprev, LIST_POISON2);
+	n->pprev = LIST_POISON2;
 }
 
 /**
@@ -461,11 +461,11 @@ static inline void hlist_replace_rcu(struct hlist_node *old,
 	struct hlist_node *next = old->next;
 
 	new->next = next;
-	WRITE_ONCE(new->pprev, old->pprev);
+	new->pprev = old->pprev;
 	rcu_assign_pointer(*(struct hlist_node __rcu **)new->pprev, new);
 	if (next)
-		WRITE_ONCE(new->next->pprev, &new->next);
-	WRITE_ONCE(old->pprev, LIST_POISON2);
+		new->next->pprev = &new->next;
+	old->pprev = LIST_POISON2;
 }
 
 /*
@@ -500,10 +500,10 @@ static inline void hlist_add_head_rcu(struct hlist_node *n,
 	struct hlist_node *first = h->first;
 
 	n->next = first;
-	WRITE_ONCE(n->pprev, &h->first);
+	n->pprev = &h->first;
 	rcu_assign_pointer(hlist_first_rcu(h), n);
 	if (first)
-		WRITE_ONCE(first->pprev, &n->next);
+		first->pprev = &n->next;
 }
 
 /**
@@ -536,7 +536,7 @@ static inline void hlist_add_tail_rcu(struct hlist_node *n,
 
 	if (last) {
 		n->next = last->next;
-		WRITE_ONCE(n->pprev, &last->next);
+		n->pprev = &last->next;
 		rcu_assign_pointer(hlist_next_rcu(last), n);
 	} else {
 		hlist_add_head_rcu(n, h);
@@ -564,10 +564,10 @@ static inline void hlist_add_tail_rcu(struct hlist_node *n,
 static inline void hlist_add_before_rcu(struct hlist_node *n,
 					struct hlist_node *next)
 {
-	WRITE_ONCE(n->pprev, next->pprev);
+	n->pprev = next->pprev;
 	n->next = next;
 	rcu_assign_pointer(hlist_pprev_rcu(n), n);
-	WRITE_ONCE(next->pprev, &n->next);
+	next->pprev = &n->next;
 }
 
 /**
@@ -592,10 +592,10 @@ static inline void hlist_add_behind_rcu(struct hlist_node *n,
 					struct hlist_node *prev)
 {
 	n->next = prev->next;
-	WRITE_ONCE(n->pprev, &prev->next);
+	n->pprev = &prev->next;
 	rcu_assign_pointer(hlist_next_rcu(prev), n);
 	if (n->next)
-		WRITE_ONCE(n->next->pprev, &n->next);
+		n->next->pprev = &n->next;
 }
 
 #define __hlist_for_each_rcu(pos, head)				\

@@ -11,7 +11,6 @@
  */
 #ifndef _ASM_GENERIC_ATOMIC64_H
 #define _ASM_GENERIC_ATOMIC64_H
-#include <linux/types.h>
 
 typedef struct {
 	long long counter;
@@ -53,8 +52,7 @@ ATOMIC64_OPS(xor)
 extern long long atomic64_dec_if_positive(atomic64_t *v);
 extern long long atomic64_cmpxchg(atomic64_t *v, long long o, long long n);
 extern long long atomic64_xchg(atomic64_t *v, long long new);
-extern long long atomic64_fetch_add_unless(atomic64_t *v, long long a, long long u);
-#define atomic64_fetch_add_unless atomic64_fetch_add_unless
+extern int	 atomic64_add_unless(atomic64_t *v, long long a, long long u);
 
 #define atomic64_add_negative(a, v)	(atomic64_add_return((a), (v)) < 0)
 #define atomic64_inc(v)			atomic64_add(1LL, (v))
@@ -64,5 +62,6 @@ extern long long atomic64_fetch_add_unless(atomic64_t *v, long long a, long long
 #define atomic64_dec(v)			atomic64_sub(1LL, (v))
 #define atomic64_dec_return(v)		atomic64_sub_return(1LL, (v))
 #define atomic64_dec_and_test(v)	(atomic64_dec_return((v)) == 0)
+#define atomic64_inc_not_zero(v) 	atomic64_add_unless((v), 1LL, 0LL)
 
 #endif  /*  _ASM_GENERIC_ATOMIC64_H  */

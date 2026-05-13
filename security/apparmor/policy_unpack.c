@@ -23,7 +23,7 @@
 
 #include "include/apparmor.h"
 #include "include/audit.h"
-#include "include/cred.h"
+#include "include/context.h"
 #include "include/crypto.h"
 #include "include/match.h"
 #include "include/path.h"
@@ -164,9 +164,8 @@ static void do_loaddata_free(struct work_struct *work)
 	}
 
 	kzfree(d->hash);
-	kzfree(d->name);
-	kvfree(d->data);
-	kzfree(d);
+	kfree(d->name);
+	kvfree(d);
 }
 
 void aa_loaddata_kref(struct kref *kref)
@@ -181,16 +180,10 @@ void aa_loaddata_kref(struct kref *kref)
 
 struct aa_loaddata *aa_loaddata_alloc(size_t size)
 {
-	struct aa_loaddata *d;
+	struct aa_loaddata *d = kvzalloc(sizeof(*d) + size, GFP_KERNEL);
 
-	d = kzalloc(sizeof(*d), GFP_KERNEL);
 	if (d == NULL)
 		return ERR_PTR(-ENOMEM);
-	d->data = kvzalloc(size, GFP_KERNEL);
-	if (!d->data) {
-		kfree(d);
-		return ERR_PTR(-ENOMEM);
-	}
 	kref_init(&d->count);
 	INIT_LIST_HEAD(&d->list);
 

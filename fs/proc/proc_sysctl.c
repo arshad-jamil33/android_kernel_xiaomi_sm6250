@@ -12,7 +12,6 @@
 #include <linux/cred.h>
 #include <linux/namei.h>
 #include <linux/mm.h>
-#include <linux/uio.h>
 #include <linux/module.h>
 #include <linux/kmemleak.h>
 #include <linux/bpf-cgroup.h>
@@ -571,14 +570,13 @@ out:
 	return err;
 }
 
-static ssize_t proc_sys_call_handler(struct kiocb *iocb, struct iov_iter *iter,
-		int write)
+static ssize_t proc_sys_call_handler(struct file *filp, void __user *buf,
+		size_t count, loff_t *ppos, int write)
 {
-	struct inode *inode = file_inode(iocb->ki_filp);
+	struct inode *inode = file_inode(filp);
 	struct ctl_table_header *head = grab_header(inode);
 	struct ctl_table *table = PROC_I(inode)->sysctl_entry;
-	size_t count = iov_iter_count(iter);
-	char *kbuf;
+	void *new_buf = NULL;
 	ssize_t error;
 
 	if (IS_ERR(head))
@@ -597,54 +595,43 @@ static ssize_t proc_sys_call_handler(struct kiocb *iocb, struct iov_iter *iter,
 	if (!table->proc_handler)
 		goto out;
 
-	/* don't even try if the size is too large */
-	error = -ENOMEM;
-	if (count >= KMALLOC_MAX_SIZE)
-		goto out;
-	kbuf = kzalloc(count + 1, GFP_KERNEL);
-	if (!kbuf)
-		goto out;
-
-	if (write) {
-		error = -EFAULT;
-		if (!copy_from_iter_full(kbuf, count, iter))
-			goto out_free_buf;
-		kbuf[count] = '\0';
-	}
-
-	error = BPF_CGROUP_RUN_PROG_SYSCTL(head, table, write, &kbuf, &count,
-					   &iocb->ki_pos);
+	error = BPF_CGROUP_RUN_PROG_SYSCTL(head, table, write, buf, &count,
+					   ppos, &new_buf);
 	if (error)
-		goto out_free_buf;
+		goto out;
 
 	/* careful: calling conventions are nasty here */
-	error = table->proc_handler(table, write, kbuf, &count, &iocb->ki_pos);
-	if (error)
-		goto out_free_buf;
+	if (new_buf) {
+		mm_segment_t old_fs;
 
-	if (!write) {
-		error = -EFAULT;
-		if (copy_to_iter(kbuf, count, iter) < count)
-			goto out_free_buf;
+		old_fs = get_fs();
+		set_fs(KERNEL_DS);
+		error = table->proc_handler(table, write, (void __user *)new_buf,
+					    &count, ppos);
+		set_fs(old_fs);
+		kfree(new_buf);
+	} else {
+		error = table->proc_handler(table, write, buf, &count, ppos);
 	}
 
-	error = count;
-out_free_buf:
-	kfree(kbuf);
+	if (!error)
+		error = count;
 out:
 	sysctl_head_finish(head);
 
 	return error;
 }
 
-static ssize_t proc_sys_read(struct kiocb *iocb, struct iov_iter *iter)
+static ssize_t proc_sys_read(struct file *filp, char __user *buf,
+				size_t count, loff_t *ppos)
 {
-	return proc_sys_call_handler(iocb, iter, 0);
+	return proc_sys_call_handler(filp, (void __user *)buf, count, ppos, 0);
 }
 
-static ssize_t proc_sys_write(struct kiocb *iocb, struct iov_iter *iter)
+static ssize_t proc_sys_write(struct file *filp, const char __user *buf,
+				size_t count, loff_t *ppos)
 {
-	return proc_sys_call_handler(iocb, iter, 1);
+	return proc_sys_call_handler(filp, (void __user *)buf, count, ppos, 1);
 }
 
 static int proc_sys_open(struct inode *inode, struct file *filp)
@@ -874,10 +861,8 @@ static int proc_sys_getattr(const struct path *path, struct kstat *stat,
 static const struct file_operations proc_sys_file_operations = {
 	.open		= proc_sys_open,
 	.poll		= proc_sys_poll,
-	.read_iter	= proc_sys_read,
-	.write_iter	= proc_sys_write,
-	.splice_read	= generic_file_splice_read,
-	.splice_write	= iter_file_splice_write,
+	.read		= proc_sys_read,
+	.write		= proc_sys_write,
 	.llseek		= default_llseek,
 };
 

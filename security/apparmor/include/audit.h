@@ -130,10 +130,7 @@ struct apparmor_audit_data {
 					int rlim;
 					unsigned long max;
 				} rlim;
-				struct {
-					int signal;
-					int unmappedsig;
-				};
+				int signal;
 			};
 		};
 		struct {

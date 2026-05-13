@@ -3,7 +3,6 @@
 #include <asm/cache.h>
 #include <asm/ptrace.h>
 #include <asm/pgtable.h>
-#include <asm/thread_info.h>
 
 #include <asm-generic/vmlinux.lds.h>
 
