@@ -2,7 +2,7 @@
 VERSION = 4
 PATCHLEVEL = 14
 SUBLEVEL = 357
-EXTRAVERSION = -THE_CLAWN
+EXTRAVERSION = -BLACKHOLE-V3
 
 # *DOCUMENTATION*
 # To see a list of typical targets execute "make help"
