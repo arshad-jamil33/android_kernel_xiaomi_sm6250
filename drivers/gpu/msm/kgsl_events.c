@@ -33,7 +33,7 @@ static inline void signal_event(struct kgsl_device *device,
 {
 	list_del(&event->node);
 	event->result = result;
-	queue_work(device->events_wq, &event->work);
+        schedule_work(&event->work);
 }
 
 /**
@@ -302,7 +302,7 @@ int kgsl_add_event(struct kgsl_device *device, struct kgsl_event_group *group,
 
 	if (timestamp_cmp(retired, timestamp) >= 0) {
 		event->result = KGSL_EVENT_RETIRED;
-		queue_work(device->events_wq, &event->work);
+                schedule_work(&event->work);
 		spin_unlock(&group->lock);
 		return 0;
 	}
